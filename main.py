@@ -1,8 +1,7 @@
-import sklearn
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
-from sklearn.ensemble import RandomForestRegressor
+# from sklearn.ensemble import RandomForestRegressor
 import csv
 import sys
 import numpy as np
@@ -14,9 +13,11 @@ def main():
     if result[0] == "search":
         #TODO search function
         pass
+    elif result[0] == "error":
+        return
     else:
         result = result[0]
-
+    print("Preparing data...")
     dataList = csvToDict(result)
     dates = []
     openPrice = []
@@ -28,24 +29,33 @@ def main():
         yesterdayPrices.append(lastOpen)
         lastOpen = float(row["Open"])
 
-    #X = np.array(dateToNum(dates)).reshape(-1, 1) #sklearn expects a 2d array, we need to convert to 2d
-    X = [dateToNum(dates), yesterdayPrices] #TODO format like [[date, yesterdayOpen], [date, yesterdayOpen]]
+    #formats input data into many arrays of len 2 into [[date, yesterdayOpen], [date, yesterdayOpen]]
+    dateNums = dateToNum(dates)
+    X = [dateNums, yesterdayPrices] #TODO format like [[date, yesterdayOpen], [date, yesterdayOpen]]
+    Xcopy = []
+    for i in range(0, len(dateNums)):
+        Xcopy.append([dateNums[i], yesterdayPrices[i]])
+    X = Xcopy
     y = openPrice
 
+    #X = np.array(dateToNum(dates)).reshape(-1, 1) #sklearn expects a 2d array, we need to convert to 2d
     #X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size = 0.20)
     split = int(len(X) * 0.8)
     X_train, X_test = X[:split], X[split:]
     y_train, y_test = y[:split], y[split:]
 
     model = MLPRegressor(
-    hidden_layer_sizes=(500, 250, 125),  # One hidden layer with 100 neurons
-    activation='relu',          # 'relu' activation function
-    solver='adam',              # 'adam' solver for weight optimization
-    max_iter=5000,               # Set the number of iterations (epochs)
-    random_state=42             # Set the seed for reproducibility
-)
+    hidden_layer_sizes=(500, 250, 125),  #number of layers and number of neurons
+    activation='relu',         
+    solver='adam',              
+    max_iter=5000,               
+    random_state=42             #makes model the same every run
+    )
+
+    print("Training model...")
     model.fit(X_train, y_train) #trains the model
     y_pred = model.predict(X_test)
+    print("\nResults:")
     print(f"Accuracy: {round(100 - (metrics.mean_absolute_percentage_error(y_test, y_pred)*100.0), 4)}%")
     print(f"R2: {round(metrics.r2_score(y_test, y_pred), 4)}")
     
@@ -68,19 +78,15 @@ def dateToNum(dates):
             #print(f"Added {thisDateNum} to dateNums")
         if thisDateNum > largestDateNum:
             largestDateNum = thisDateNum
-    print(largestDateNum)
     return dateNums
         
 def getMonth(date):
-    #print(f"Month num {int(date[3:5])}")
     return int(date[3:5])
 
 def getDay(date):
-    #print(f"Day num {int(date[0:2])}")
     return int(date[0:2])
 
 def getYear(date):
-    #print(f"Year num {int(date[6:])}")
     return int(date[6:])  
 
 def csvToDict(filename):
@@ -91,19 +97,23 @@ def csvToDict(filename):
             dataList.append(row)
     return dataList
 
+#goes through command line arugments and passes input into main
 def parseArgs():
     try:
         if(sys.argv[1].lower() == "search"):
             return ["search", sys.argv[2]]
         else:
+            #make sure filename ends in .csv
             filename = sys.argv[1].upper().removesuffix(".CSV")
             filename += ".csv"
             filename = DATASET_PATH + filename
             return [filename]
     except IndexError:
-        print("Display a help message")
+        print(f"Usage: python {FILENAME} {{stock symbol}}\n       python {FILENAME} search {{stock symbol}}")
+        return ["error"]
     except FileNotFoundError:
         print(f"Invalid filename, use python {FILENAME} search {{stock symbol}} to find the correct company\n")
+        return ["error"]
 
 
 main()
