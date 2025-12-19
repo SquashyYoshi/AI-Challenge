@@ -57,7 +57,6 @@ def main():
     print("\nResults:")
     print(f"Accuracy: {round(100 - (metrics.mean_absolute_percentage_error(y_test, y_pred)*100.0), 4)}%")
     
-    # Interactive prediction loop
     print("\n================================================")
     print("Enter dates to predict stock prices (or 'quit' to exit)")
     print("================================================")
